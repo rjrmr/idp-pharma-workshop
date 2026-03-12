@@ -1,0 +1,24 @@
+{
+  "document_type": "batch_manufacturing_record",
+  "source_file": "bmr-sample-03-partial.pdf",
+  "extracted_fields": {
+    "product_name": "Ibuprofen 200mg Tablets",
+    "batch_number": "BMR-2024-0592",
+    "ingredients": [
+      {
+        "ingredient_name": "Ibuprofen",
+        "weight_kg": 20.00,
+        "lot_number": "LOT-IB-20240410"
+      },
+      {
+        "ingredient_name": "Croscarmellose Sodium",
+        "weight_kg": null,
+        "lot_number": "LOT-CS-20240405"
+      }
+    ],
+    "equipment_ids": null,
+    "operator_initials": "TNB",
+    "start_timestamp": null,
+    "end_timestamp": null
+  }
+}
