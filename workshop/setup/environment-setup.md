@@ -70,6 +70,7 @@ Replace the placeholder values with your environment-specific settings:
 
 - **`AWS_REGION`** — The AWS region where Bedrock and BDA are enabled (e.g., `us-east-1`, `us-west-2`)
 - **`BDA_PROJECT_ARN`** — The ARN of your Bedrock Data Automation project. You can find this in the AWS Console under Amazon Bedrock → Data Automation → Projects.
+- **`BDA_BLUEPRINT_ARN`** — The ARN of your BDA blueprint for BMR extraction. Create one using `python workshop/scripts/create_blueprint.py` or via the AWS Console.
 
 ### Placing the Configuration
 
@@ -106,6 +107,9 @@ This installs the following packages:
 | `strands-agents-tools` | Tool integrations for the Strands Agent |
 | `streamlit` | Web UI framework for the workshop chat interface |
 | `boto3` | AWS SDK for Python — used for AWS service access and credential management |
+| `bedrock-agentcore[strands-agents]` | AgentCore toolkit — Memory, Gateway, and Runtime integration |
+| `mcp` | Model Context Protocol client for BDA MCP Server communication |
+| `httpx` | HTTP client for AgentCore Gateway OAuth2 token exchange |
 
 ---
 

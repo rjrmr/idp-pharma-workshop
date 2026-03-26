@@ -303,6 +303,7 @@ def build_agent(_region: str, _model_id: str):
         from strands import Agent
         from strands.models import BedrockModel
         from strands.tools.mcp import MCPClient
+        from mcp import StdioServerParameters
 
         mcp_config_path = os.path.join(
             os.path.dirname(__file__), "setup", "mcp-config.json"
@@ -363,7 +364,6 @@ def send_document_question(question, document_bytes, conversation_history):
     if agent is None:
         return "⚠️ Agent could not be initialised."
 
-    doc_b64 = base64.b64encode(document_bytes).decode("utf-8")
     doc_name = st.session_state.document_name or "document"
     history_text = ""
     if conversation_history:
@@ -371,10 +371,25 @@ def send_document_question(question, document_bytes, conversation_history):
         for msg in conversation_history[-6:]:
             history_text += f"{msg['role'].upper()}: {msg['content']}\n"
 
+    # Build a prompt that includes the full document as base64 for the agent
+    doc_b64 = base64.b64encode(document_bytes).decode("utf-8")
+    doc_name_lower = doc_name.lower()
+    if doc_name_lower.endswith(".pdf"):
+        doc_type = "pdf"
+    elif doc_name_lower.endswith((".jpg", ".jpeg")):
+        doc_type = "jpeg"
+    else:
+        doc_type = "png"
+
     prompt = (
-        f"Document: {doc_name}\n"
-        f"Content (base64): {doc_b64[:200]}... [{len(doc_b64)} chars]\n"
-        f"{history_text}\nQuestion: {question}"
+        f"I have uploaded a handwritten pharmaceutical document named '{doc_name}' "
+        f"(format: {doc_type}, base64 length: {len(doc_b64)} chars).\n"
+        f"The full document content in base64 is:\n{doc_b64}\n"
+        f"{history_text}\n"
+        f"Question: {question}\n\n"
+        f"Please carefully examine the handwritten text in this document. "
+        f"Pay close attention to handwritten numbers, names, and dates. "
+        f"If any field is unclear or illegible, return null for that field."
     )
     try:
         return str(agent(prompt))
@@ -435,18 +450,32 @@ def send_question_bedrock_fallback(question, document_bytes, conversation_histor
         content_blocks.append({"text": full_question})
 
         system_text = (
-            "You are an IDP agent for pharmaceutical handwritten documents. "
-            "Only answer based on the uploaded document. Return JSON when asked. "
-            "Use BMR schema: product_name, batch_number, ingredients, equipment_ids, "
-            "operator_initials, start_timestamp, end_timestamp. "
-            "If a field is unreadable, return null."
+            "You are an expert Intelligent Document Processing (IDP) agent specialising in "
+            "pharmaceutical handwritten documents such as Batch Manufacturing Records (BMR) "
+            "and QC Inspection Forms.\n\n"
+            "CRITICAL INSTRUCTIONS FOR HANDWRITTEN DOCUMENT EXTRACTION:\n"
+            "1. Carefully examine every pixel of the uploaded document image/PDF.\n"
+            "2. Pay special attention to handwritten text — read each character individually.\n"
+            "3. For numbers: distinguish between similar-looking digits (0 vs O, 1 vs l, 5 vs S, 6 vs G).\n"
+            "4. For names: spell out exactly what is written, even if it looks like a misspelling.\n"
+            "5. For dates/timestamps: preserve the exact format written on the document.\n"
+            "6. If a field is crossed out, smudged, or truly illegible, return null.\n"
+            "7. Only answer based on the uploaded document content — never fabricate data.\n"
+            "8. Return structured data as JSON when asked for extraction.\n"
+            "9. Follow ALCOA+ data integrity principles.\n"
+            "10. Use BMR schema: product_name, batch_number, ingredients "
+            "(array of ingredient_name, weight_kg, lot_number), equipment_ids, "
+            "operator_initials, start_timestamp, end_timestamp.\n"
+            "11. For QC forms use: product_name, batch_number, tests "
+            "(array of test_name, test_parameters, measured_value, unit, "
+            "specification_limit, pass_fail), inspector_name, inspection_date."
         )
 
         response = client.converse(
             modelId=model_id,
             system=[{"text": system_text}],
             messages=[{"role": "user", "content": content_blocks}],
-            inferenceConfig={"maxTokens": 4096, "temperature": 0.1},
+            inferenceConfig={"maxTokens": 4096, "temperature": 0.0},
         )
         parts = []
         for block in response["output"]["message"]["content"]:
